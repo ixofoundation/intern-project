@@ -4,14 +4,11 @@ import Launchbutton from './launch-button';
 import Web3 from 'web3';
 import swal from 'sweetalert';
 import utf8 from 'utf8';
-import base64 from 'base-64';
-import ixologo from './ixologo.png'
-// import 'typeface-roboto'; 
-import { ENGINE_METHOD_DIGESTS } from 'constants';
+import base64 from 'base-64'
 
 
 export default class Dashboard extends React.Component {
-  // styling properties 
+
   constructor(props) {
     super(props);
 
@@ -28,9 +25,6 @@ export default class Dashboard extends React.Component {
     this.handleMessageBodyChanged2 = this.handleMessageBodyChanged2.bind(this);
     this.handleMessageBodyChanged3 = this.handleMessageBodyChanged3.bind(this);
     this.getEthereumAddressAsync = this.getEthereumAddressAsync.bind(this);
-    this.handleRequestInfoButtonClicked = this.handleRequestInfoButtonClicked.bind(this)
-    this.handleFormButtonClicked = this.handleFormButtonClicked.bind(this);
-    this.handleSchemaButtonClicked = this.handleSchemaButtonClicked.bind(this);
     this.encodeJSON = this.encodeJSON.bind(this);
     this.uploadAndInsert = this.uploadAndInsert.bind(this);
 
@@ -48,62 +42,6 @@ export default class Dashboard extends React.Component {
 
   componentDidMount() {
     this.setState({ ixo: new Ixo() });
-  }
-
-  handleRequestInfoButtonClicked(e) {
-    this.blockchainProviders.ixo_keysafe.provider.getInfo((error, response) => {
-      alert(`Dashboard handling received response for INFO response: ${JSON.stringify(response)}, error: ${JSON.stringify(error)}`)
-    })
-  }
-
-  handleSimulateDidDocLedgeringButtonClicked = (e) => {
-    this.blockchainProviders.ixo_keysafe.provider.getDidDoc((error, didDocResponse) => {
-      if (error) {
-        alert(`Simulate DID Doc retrieval error: ${JSON.stringify(error)}`)
-      } else {
-        console.log(`Simulate signing DID Doc retrieval response: \n${JSON.stringify(didDocResponse)}\n`)
-        this.blockchainProviders.ixo_keysafe.provider.requestSigning(JSON.stringify(didDocResponse), (error, signatureResponse) => {
-          if (error) {
-            alert(`Simulate DID Doc signing error: ${JSON.stringify(error)}`)
-          } else {
-            console.log(`Simulate signing DID Doc  SIGN response: \n${JSON.stringify(signatureResponse)}\n, error: ${JSON.stringify(error)}`)
-
-            const { signatureValue, created } = signatureResponse
-            const ledgerObjectJson = this.generateLedgerObjectJson(didDocResponse, signatureValue, created)
-            const ledgerObjectUppercaseHex = new Buffer(ledgerObjectJson).toString("hex").toUpperCase()
-            const ledgeringEndpoint = `http://35.192.187.110:46657/broadcast_tx_sync?tx=0x${ledgerObjectUppercaseHex}`
-
-            this.performLedgeringHttpRequest(ledgeringEndpoint, (response) => {
-              console.log(`success callback from perform ledgering HTTP call response: \n${response}`)
-              alert(`success callback from perform ledgering HTTP call response: ${response}`)
-            }, (status, text) => {
-              console.log(`failure callback from perform ledgering HTTP call status: \n${status}\ntext: \n${text}`)
-              alert(`failure callback from perform ledgering HTTP call status: \n${status}, text: \n${text}`)
-            })
-          }
-        })
-      }
-    })
-  }
-
-
-  performLedgeringHttpRequest = (url, success, failure) => {
-    var request = new XMLHttpRequest()
-    request.open("GET", url, true);
-    request.onreadystatechange = function () {
-      if (request.readyState === 4) {
-        if (request.status === 200)
-          success(request.responseText);
-        else if (failure)
-          failure(request.status, request.statusText);
-      }
-    };
-    request.send(null);
-  }
-
-  generateLedgerObjectJson = (didDoc, signature, created) => {
-    const signatureValue = [1, signature]
-    return JSON.stringify({ payload: [10, didDoc], signature: { signatureValue, created } })
   }
 
   initProvider(blockchainProvider) {
@@ -135,29 +73,12 @@ export default class Dashboard extends React.Component {
   }
 
   handleExtensionLaunch(providerId) {
-    // console.log(`***** target: ${target}`);
-
     if (this.state.messageBody.length === 0) {
       return;
     }
     const blockchainProvider = (providerId === this.blockchainProviders.metamask.id) ? this.blockchainProviders.metamask : this.blockchainProviders.ixo_keysafe;
-    this.uploadAndInsert("http://localhost:5000/", this.state.messageBody, blockchainProvider);
-  }
-  handleSchemaButtonClicked(providerId) {
-    if (this.state.messageBody2.length === 0) {
-      return;
-    }
-    const blockchainProvider = (providerId === this.blockchainProviders.metamask.id) ? this.blockchainProviders.metamask : this.blockchainProviders.ixo_keysafe;
-    this.signData(this.state.messageBody2, blockchainProvider);
-  }
-
-
-  handleFormButtonClicked(providerId) {
-    if (this.state.messageBody3.length === 0) {
-      return;
-    }
-    const blockchainProvider = (providerId === this.blockchainProviders.metamask.id) ? this.blockchainProviders.metamask : this.blockchainProviders.ixo_keysafe;
-    this.signData(this.state.messageBody3, blockchainProvider);
+    var PDSURLs = ["http://beta.elysian.ixo.world:5000/"]
+    this.uploadAndInsert(PDSURLs[0], this.state.messageBody, blockchainProvider);
   }
 
   signData(message, blockchainProvider) {
@@ -188,6 +109,42 @@ export default class Dashboard extends React.Component {
     return encoded;
   }
 
+  // this method will retrieve the specific Object ID from the URL
+  getOIDFromURL() {
+    var url = window.location.href
+    var queryString = url ? url.split('?')[1] : window.location.search.slice(1);
+    var obj = {};
+    if (queryString) {
+      queryString = queryString.split('#')[0];
+      var arr = queryString.split('&');
+      for (var i = 0; i < arr.length; i++) {
+        var a = arr[i].split('=');
+        var paramNum = undefined;
+        var paramName = a[0].replace(/\[\d*\]/, function (v) {
+          paramNum = v.slice(1, -1);
+          return '';
+        });
+        var paramValue = typeof (a[1]) === 'undefined' ? true : a[1];
+        paramName = paramName.toLowerCase();
+        paramValue = paramValue.toLowerCase();
+        if (obj[paramName]) {
+          if (typeof obj[paramName] === 'string') {
+            obj[paramName] = [obj[paramName]];
+          }
+          if (typeof paramNum === 'undefined') {
+            obj[paramName].push(paramValue);
+          }
+          else {
+            obj[paramName][paramNum] = paramValue;
+          }
+        }
+        else {
+          obj[paramName] = paramValue;
+        }
+      }
+    }
+    return obj;
+  }
 
   uploadAndInsert(PDSURL, message, blockchainProvider) {
     var encodedClaimSchema = this.encodeJSON(this.state.messageBody2);
@@ -230,18 +187,18 @@ export default class Dashboard extends React.Component {
               this.state.ixo.project.createProject(projectJSON, response, PDSURL).then((result) => {              console.log(`Project Details:   \n${JSON.stringify(result)}`)
                 swal({
                   title: 'Your project has been created!',
-                  text: 'You can find your new project on the ixo website with other current projects. \n \n Click OK to be redirected to the ixo website',
-                  type: "success"
+                  text: 'Click OK to be redirected to ixo.world and get started!',
+                  icon: "success"
                 })
                   .then(redirect => {
                     if (redirect) {
-                      window.location.href = 'https://ixo.foundation/';
+                      window.location.href = 'http://beta.www.ixo.world/';
                     }
                   });
               })
             } catch (error) {
               console.log("Incorrect PDS URL format")
-              swal("ERROR", "Incorrect PDS URL format", "error")
+              swal("ERROR","Please make sure that you have pasted everything exactly as it appears in the email.", "error")
             }
   
           })
@@ -259,12 +216,14 @@ export default class Dashboard extends React.Component {
         }
       }).catch((error) => {
         console.log("Error, unable to return form");
+        swal("ERROR","Please make sure that you have pasted everything exactly as it appears in the email.", "error")
         console.log(error);
       });
 
    
     }).catch((error) => {
       console.log("Error, unable to return schema hash");
+      swal("ERROR","Please make sure that you have pasted everything exactly as it appears in the email.", "error")
       console.log(error);
     });
   }
@@ -282,34 +241,11 @@ export default class Dashboard extends React.Component {
     });
   }
 
-  print() {
-    console.log("HAAAAAAAA");
-  }
 
   render() {
     return (
-      <div class='background'>
-        <div className="topRect">
-          <img id='logo-top' src={ixologo} alt='logo' />
-          <h3>EXPLORE</h3>
-        </div>
-        <div className="secondHeader">
-          <h1>Create Project</h1>
-          <p id='subtitle'> Upload your project for the world to see.</p>
-          <div></div>
-        </div>
-
-
+      <div>
         <br></br>
-        {/* <input value={this.state.messageBody2} onChange={this.handleMessageBodyChanged2} /> */}
-        {/* <Launchbutton
-          provider={this.blockchainProviders.ixo_keysafe.id}
-          title="Sign Schema"
-          handleLaunchEvent={this.handleSchemaButtonClicked} />
-        <br></br>
-        Paste the Schema into the above textbox to Sign
-
-      <br></br>
       <b>1. Paste the Schema text here:</b>
       <br></br>
       <textarea style={{ height: 100, width: 400 }}
@@ -326,8 +262,7 @@ export default class Dashboard extends React.Component {
       <br></br>
       <br></br>
       <br></br>
-      <b>3. Paste the Project Details here</b><br></br><b>to sign and create your project:</b>
-      <br></br>
+      <b>3. Paste the Project Details here:</b><br></br>
       <textarea style={{ height: 100, width: 400 }}
         value={this.state.messageBody} 
         onChange={this.handleMessageBodyChanged} /> 
@@ -337,32 +272,10 @@ export default class Dashboard extends React.Component {
           provider={this.blockchainProviders.ixo_keysafe.id}
           title="Sign and Create Project"
           handleLaunchEvent={this.handleExtensionLaunch} />
-        {this.blockchainProviders.ixo_keysafe.doShow} */}
-        <div class="mask">
-          <h2>Almost there!</h2>
-          <div class="line-2">
-          </div>
-          <h6>To create your project, click the button below and enter your ixo keysafe
-          password in the window that appears.
-          </h6>
-          <div class="button-box">
-            <div class="button" onClick={this.print}>
-              <p id='button-text' onClick={this.print()}>+&emsp;Create Project</p>
-            </div>
-          </div>
-        </div>
+        
+        {this.blockchainProviders.ixo_keysafe.doShow}
 
-        <div class='footer'>
-          <img id='logo-bottom' src={ixologo} alt='logo' />
-          <p>About</p>
-          <p>Membership</p>
-          <p>Ecosystem</p>
-          <p>Network</p>
-          <p>Plans/ Pricing</p>
-          <p>Support</p>
-        </div>
       </div>
     )
   }
 }
-
